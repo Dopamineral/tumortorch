@@ -3,6 +3,7 @@ import os
 import pandas as pd
 from PIL import Image
 from sklearn.model_selection import train_test_split
+from sklearn import preprocessing
 import numpy as np 
 import matplotlib.pyplot as plt
 
@@ -38,15 +39,20 @@ class imagedataset(Dataset):
     
         self.X = self.data_name.iloc[:,0] #image path
         self.y = self.data_name.iloc[:,1] #image label
+        
+        LE = preprocessing.LabelEncoder()
+        self.y = LE.fit_transform(self.y)
+        self.y = torch.as_tensor(self.y,dtype=torch.long)
+        
         self.len = self.X.shape[0]
         
         #define train test splits
         self.X_train, self.X_test, self.y_train, self.y_test =train_test_split(self.X, self.y, test_size=0.33, random_state=123) 
        
         self.X_train = self.X_train.reset_index(drop=True) #drop the indices here or you'll get some exotic errors when loading the files
-        self.y_train = self.y_train.reset_index(drop=True)
+        #self.y_train = self.y_train.reset_index(drop=True)
         self.X_test = self.X_test.reset_index(drop=True)
-        self.y_test = self.y_test.reset_index(drop=True)
+        #self.y_test = self.y_test.reset_index(drop=True)
        
         if train==True: #based on argument when defining dataset
             self.xout = self.X_train
@@ -152,9 +158,17 @@ model.fc = nn.Linear(512,2) #takes 512 inputs out of the convolution, sending it
 criterion = nn.CrossEntropyLoss()
 optimizer= torch.optim.Adam([parameters for parameters in model.parameters() if parameters.requires_grad],lr=0.003)
 
+#%% Select GPU for training.
+use_gpu = torch.cuda.is_available()
+if use_gpu:
+    print ('USEING GPU')
+    model = model.to('cuda')
+else:
+	print ('USEING CPU')
+
 
 #%% training loop 
-max_epochs = 20
+max_epochs = 100
 loss_list = []
 accuracy_list = []
 correct = 0
@@ -163,17 +177,24 @@ n_test = len(validation_dataset)
 for epoch in range(max_epochs):
     loss_sublist = []
     for x,y in train_loader:
+        if use_gpu:
+            x = x.to('cuda')
+            y = y.to('cuda')
+        #x,y = x.cuda(),y.cuda() #run on cuda
         model.train()
         optimizer.zero_grad()
         z = model(x)
         loss = criterion(z,y)
-        loss_sublist.append(loss)
+        loss_sublist.append(loss.item())
         loss.backward()
         optimizer.step()
     loss_list.append(np.mean(loss_sublist))
     
     correct=0
     for x_test,y_test in validation_loader:
+        if use_gpu:
+            x_test = x_test.to('cuda')
+            y_test = y_test.to('cuda')
         model.eval()
         z = model(x_test)
         _,yhat = torch.max(z.data,1)
@@ -182,25 +203,8 @@ for epoch in range(max_epochs):
     accuracy_list.append(accuracy)
     print(f'==> epoch: {epoch} | Loss: {np.mean(loss_sublist)} | Accuracy: {accuracy}')
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+plt.plot(loss_list)
+plt.plot(accuracy_list)
 
 # checkpoint handling.
 
