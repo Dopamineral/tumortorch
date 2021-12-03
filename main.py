@@ -116,6 +116,18 @@ def preview_sample(dataset,sample):
     fig.axes.get_xaxis().set_visible(False)
     fig.axes.get_yaxis().set_visible(False)
 
+def check_label_distribution(dataset):
+    original_samples = list(dataset.y.numpy())
+    label_ratio_original = sum(original_samples) / len(original_samples)
+    print(f'ORIGINAL data has a labelratio of: {label_ratio_original}')
+    train_samples = list(dataset.y_train.numpy())
+    label_ratio_train = sum(train_samples) / len(train_samples)
+    print(f'TRAIN data has a labelratio of: {label_ratio_train}')
+    test_samples = list(dataset.y_test.numpy())
+    label_ratio_test = sum(test_samples) / len(test_samples)
+    print(f'VAL data has a labelratio of: {label_ratio_test}')
+    
+    
 
 trans1 = transforms.Resize([224,224])
 trans2 = transforms.Grayscale(num_output_channels=3)
@@ -132,13 +144,15 @@ image_transforms = transforms.Compose([trans1,trans2,trans3,trans4,trans5,trans6
 
 train_dataset = imagedataset('data.csv', 'C:/Users/rober/Desktop',train=True,transform=image_transforms)
 validation_dataset = imagedataset('data.csv', 'C:/Users/rober/Desktop',train=False,transform=image_transforms)
-
+print('quality control')
 print('#### training dataset: ####')
 check_data(train_dataset)
 check_image_channels(train_dataset)
 print('#### validation dataset: ####')
 check_data(validation_dataset)
 check_image_channels(validation_dataset)
+print('quality control')
+check_label_distribution(train_dataset)
 
 preview_sample(train_dataset,163)
 
@@ -161,10 +175,10 @@ optimizer= torch.optim.Adam([parameters for parameters in model.parameters() if 
 #%% Select GPU for training.
 use_gpu = torch.cuda.is_available()
 if use_gpu:
-    print ('USEING GPU')
+    print ('GPU Activated')
     model = model.to('cuda')
 else:
-	print ('USEING CPU')
+	print ('CPU is used')
 
 
 #%% training loop 
@@ -201,10 +215,12 @@ for epoch in range(max_epochs):
         correct += (yhat==y_test).sum().item()
     accuracy = correct / n_test
     accuracy_list.append(accuracy)
-    print(f'==> epoch: {epoch} | Loss: {np.mean(loss_sublist)} | Accuracy: {accuracy}')
+    print(f'==> epoch: {epoch:03d} | Loss: {np.mean(loss_sublist):.4f} | Accuracy: {accuracy:.4f}')
 
 plt.plot(loss_list)
 plt.plot(accuracy_list)
+plt.legend(['val loss','val accuracy'])
+plt.xlabel('epoch')
 
 # checkpoint handling.
 
