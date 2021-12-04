@@ -135,10 +135,13 @@ def check_image_channels(dataset):
     
 def preview_sample(dataset,sample):
     '''plot a preview of a brain image with corresponding label'''
-    fig = plt.imshow(dataset[sample][0].numpy()[0], cmap='gray')
+    #TODO: IMplement figure siaving
+    samplefig = plt.imshow(dataset[sample][0].numpy()[0], cmap='gray')
     plt.title(dataset[sample][1])
-    fig.axes.get_xaxis().set_visible(False)
-    fig.axes.get_yaxis().set_visible(False)
+    samplefig.axes.get_xaxis().set_visible(False)
+    samplefig.axes.get_yaxis().set_visible(False)
+    figure_save_path = os.path.join(logpath,f'sample_{sample}.png')
+    plt.savefig(figure_save_path)
 
 def check_label_distribution(dataset):
     original_samples = list(dataset.y.numpy())
@@ -187,7 +190,7 @@ print('quality control')
 flog.write('quality control'+ '\n')
 check_label_distribution(train_dataset)
 
-preview_sample(train_dataset,163)
+# preview_sample(train_dataset,163)
 
 train_loader = DataLoader(dataset= train_dataset, batch_size = 5)
 validation_loader = DataLoader(dataset = validation_dataset, batch_size = 5)
@@ -228,11 +231,11 @@ checkpoint = {'epoch':None, # checkpoint dictionary
               'loss':None,
               'val_accuracy':None}
 
-checkpoint_save_interval = 50
+checkpoint_save_interval = 20
 
 flog.close()
 #%% training loop 
-max_epochs = 100
+max_epochs = 1000
 loss_list = []
 accuracy_list = []
 correct = 0
@@ -288,19 +291,26 @@ for epoch in range(max_epochs):
         torch.save(checkpoint, checkpoint_path)
         print(f'==> epoch: {epoch:03d} | Loss: {np.mean(loss_sublist):.4f} | Accuracy: {accuracy:.4f} | T:{time_now} - checkpoint save')
         flog.write(f'==> epoch: {epoch:03d} | Loss: {np.mean(loss_sublist):.4f} | Accuracy: {accuracy:.4f} | T:{time_now} - checkpoint save'+ '\n')
+        
+        # TODO: Implement figure saving during training
+        
+        # lossfig = plt.plot(loss_list)
+        # plt.plot(accuracy_list)
+        # plt.legend(['val loss','val accuracy'])
+        # plt.xlabel('epoch')
+        
+        # figure_save_path = os.path.join(logpath,f'train_loss_fig{epoch:04d}.png')
+        # lossfig.savefig(figure_save_path)
     else: 
     
         print(f'==> epoch: {epoch:03d} | Loss: {np.mean(loss_sublist):.4f} | Accuracy: {accuracy:.4f} | T:{time_now}')
         flog.write(f'==> epoch: {epoch:03d} | Loss: {np.mean(loss_sublist):.4f} | Accuracy: {accuracy:.4f} | T:{time_now}'+ '\n')
         
     flog.close()
-#%% Plot data when finished
 
 
-plt.plot(loss_list)
-plt.plot(accuracy_list)
-plt.legend(['val loss','val accuracy'])
-plt.xlabel('epoch')
+
+
 
 
 
