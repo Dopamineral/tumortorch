@@ -1,4 +1,5 @@
 import argparse
+import logging
 import os
 import pandas as pd
 from PIL import Image
@@ -6,6 +7,7 @@ from sklearn.model_selection import train_test_split
 from sklearn import preprocessing
 import numpy as np 
 import matplotlib.pyplot as plt
+from datetime import datetime
 
 import torch
 from torch.utils.data import Dataset,DataLoader
@@ -21,11 +23,31 @@ parser.add_argument('--seed', default=0, type=int,
 
 parser.add_argument('--testratio',default = 0.3, type=float,
                     help='Define custom test size ratio')
+
 opts = parser.parse_args()
 
 torch.manual_seed(opts.seed) #! important for reproducibility
 
 test_ratio = opts.testratio #used in imagedataset class when defining train test split.
+
+#Logging and directory handling 
+working_directory = 'C:/Users/rober/Desktop'
+os.chdir(working_directory)
+
+now = datetime.now()
+date_time = now.strftime("%d-%m-%Y_%H.%M.%S")
+
+checkpoint_directory_string = f'checkpoints_{date_time}'
+logging_directory_string = f'log_{date_time}'
+os.mkdir(checkpoint_directory_string)
+os.mkdir(logging_directory_string)
+
+logpath = os.path.join(working_directory,logging_directory_string).replace('\\','/' )
+logfile_name = os.path.join(logpath,f'deepseeker_{date_time}.log').replace('\\','/' )
+
+logging.basicConfig(filename=logfile_name, encoding='utf-8', level=logging.INFO)
+logging.info('Starting Script')
+
 
 #%% dataset
 class imagedataset(Dataset):
@@ -181,6 +203,19 @@ else:
 	print ('CPU is used')
 
 
+
+#%% checkpoint handling. 
+
+checkpoint_path_full = os.path.join(working_directory,checkpoint_directory_string).replace('\\','/' )
+
+
+checkpoint = {'epoch':None, # checkpoint dictionary
+              'model_state_dict':None, # must contain all these things
+              'optimizer_state_dict':None,
+              'loss':None,
+              'val_accuracy':None}
+
+checkpoint_save_interval = 50
 #%% training loop 
 max_epochs = 100
 loss_list = []
@@ -188,13 +223,25 @@ accuracy_list = []
 correct = 0
 n_test = len(validation_dataset)
 
+
 for epoch in range(max_epochs):
+    time_now = datetime.now().strftime("%d/%m %H:%M:%S")
+    
+    if epoch%checkpoint_save_interval==0:
+        save_checkpoint = True
+    else:
+        save_checkpoint = False
+        
+    if save_checkpoint: 
+        
+        checkpoint_path = os.path.join(checkpoint_path_full,f'checkpoint_{epoch:04d}.pt')
+    
     loss_sublist = []
     for x,y in train_loader:
         if use_gpu:
             x = x.to('cuda')
             y = y.to('cuda')
-        #x,y = x.cuda(),y.cuda() #run on cuda
+        
         model.train()
         optimizer.zero_grad()
         z = model(x)
@@ -215,13 +262,28 @@ for epoch in range(max_epochs):
         correct += (yhat==y_test).sum().item()
     accuracy = correct / n_test
     accuracy_list.append(accuracy)
-    print(f'==> epoch: {epoch:03d} | Loss: {np.mean(loss_sublist):.4f} | Accuracy: {accuracy:.4f}')
+    
+    if save_checkpoint:
+        checkpoint['epoch'] = epoch 
+        checkpoint['model_state_dict'] = model.state_dict()
+        checkpoint['optimizer_state_dict'] = optimizer.state_dict()
+        checkpoint['loss'] = loss_list
+        checkpoint['val_accuracy'] = accuracy_list
+        torch.save(checkpoint, checkpoint_path)
+        print(f'==> epoch: {epoch:03d} | Loss: {np.mean(loss_sublist):.4f} | Accuracy: {accuracy:.4f} | T:{time_now} - checkpoint save')
+
+    else: 
+    
+        print(f'==> epoch: {epoch:03d} | Loss: {np.mean(loss_sublist):.4f} | Accuracy: {accuracy:.4f} | T:{time_now}')
+
+#%% Plot 
+os.chdir(working_directory)
 
 plt.plot(loss_list)
 plt.plot(accuracy_list)
 plt.legend(['val loss','val accuracy'])
 plt.xlabel('epoch')
 
-# checkpoint handling.
+
 
 
