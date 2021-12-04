@@ -1,5 +1,4 @@
 import argparse
-import logging
 import os
 import pandas as pd
 from PIL import Image
@@ -45,9 +44,7 @@ os.mkdir(logging_directory_string)
 logpath = os.path.join(working_directory,logging_directory_string).replace('\\','/' )
 logfile_name = os.path.join(logpath,f'deepseeker_{date_time}.log').replace('\\','/' )
 
-logging.basicConfig(filename=logfile_name, encoding='utf-8', level=logging.INFO)
-logging.info('Starting Script')
-
+flog = open(logfile_name, 'a')
 
 #%% dataset
 class imagedataset(Dataset):
@@ -116,10 +113,14 @@ def check_data(dataset,verbose = False):
       
     if verbose == True:
         print("errors found in the following indices:")
+        flog.write("errors found in the following indices:" + '\n')
         print(error_list)
+        flow.write(error_list+ '\n')
         print(dataset.X_train.iloc[error_list])
+        flog.write(dataset.X_train.iloc[error_list]+ '\n')
     else: 
         print(f'succesfully loaded {succes_len} of {data_len} files')
+        flog.write(f'succesfully loaded {succes_len} of {data_len} files'+ '\n')
         
 def check_image_channels(dataset):
     '''check how many channels there are per image. If there is a difference, solve it '''
@@ -130,6 +131,7 @@ def check_image_channels(dataset):
         channels_list.append(channels)
     present_channels = set(channels_list)
     print(f'set of channels in dataset is: {present_channels}')
+    flog.write(f'set of channels in dataset is: {present_channels}'+ '\n')
     
 def preview_sample(dataset,sample):
     '''plot a preview of a brain image with corresponding label'''
@@ -142,12 +144,17 @@ def check_label_distribution(dataset):
     original_samples = list(dataset.y.numpy())
     label_ratio_original = sum(original_samples) / len(original_samples)
     print(f'ORIGINAL data has a labelratio of: {label_ratio_original}')
+    flog.write(f'ORIGINAL data has a labelratio of: {label_ratio_original}'+ '\n')
+    
     train_samples = list(dataset.y_train.numpy())
     label_ratio_train = sum(train_samples) / len(train_samples)
     print(f'TRAIN data has a labelratio of: {label_ratio_train}')
+    flog.write(f'TRAIN data has a labelratio of: {label_ratio_train}'+ '\n')
+    
     test_samples = list(dataset.y_test.numpy())
     label_ratio_test = sum(test_samples) / len(test_samples)
     print(f'VAL data has a labelratio of: {label_ratio_test}')
+    flog.write(f'VAL data has a labelratio of: {label_ratio_test}'+ '\n')
     
     
 
@@ -167,13 +174,17 @@ image_transforms = transforms.Compose([trans1,trans2,trans3,trans4,trans5,trans6
 train_dataset = imagedataset('data.csv', 'C:/Users/rober/Desktop',train=True,transform=image_transforms)
 validation_dataset = imagedataset('data.csv', 'C:/Users/rober/Desktop',train=False,transform=image_transforms)
 print('quality control')
+flog.write('quality control'+ '\n')
 print('#### training dataset: ####')
+flog.write('#### training dataset: ####'+ '\n')
 check_data(train_dataset)
 check_image_channels(train_dataset)
 print('#### validation dataset: ####')
+flog.write('#### validation dataset: ####'+ '\n')
 check_data(validation_dataset)
 check_image_channels(validation_dataset)
 print('quality control')
+flog.write('quality control'+ '\n')
 check_label_distribution(train_dataset)
 
 preview_sample(train_dataset,163)
@@ -197,10 +208,12 @@ optimizer= torch.optim.Adam([parameters for parameters in model.parameters() if 
 #%% Select GPU for training.
 use_gpu = torch.cuda.is_available()
 if use_gpu:
-    print ('GPU Activated')
+    print('GPU Activated')
+    flog.write('GPU Activated'+ '\n')
     model = model.to('cuda')
 else:
-	print ('CPU is used')
+    print('CPU is used')
+    flog.write('CPU is used'+ '\n')
 
 
 
@@ -216,6 +229,8 @@ checkpoint = {'epoch':None, # checkpoint dictionary
               'val_accuracy':None}
 
 checkpoint_save_interval = 50
+
+flog.close()
 #%% training loop 
 max_epochs = 100
 loss_list = []
@@ -225,6 +240,7 @@ n_test = len(validation_dataset)
 
 
 for epoch in range(max_epochs):
+    flog = open(logfile_name, 'a')
     time_now = datetime.now().strftime("%d/%m %H:%M:%S")
     
     if epoch%checkpoint_save_interval==0:
@@ -271,13 +287,15 @@ for epoch in range(max_epochs):
         checkpoint['val_accuracy'] = accuracy_list
         torch.save(checkpoint, checkpoint_path)
         print(f'==> epoch: {epoch:03d} | Loss: {np.mean(loss_sublist):.4f} | Accuracy: {accuracy:.4f} | T:{time_now} - checkpoint save')
-
+        flog.write(f'==> epoch: {epoch:03d} | Loss: {np.mean(loss_sublist):.4f} | Accuracy: {accuracy:.4f} | T:{time_now} - checkpoint save'+ '\n')
     else: 
     
         print(f'==> epoch: {epoch:03d} | Loss: {np.mean(loss_sublist):.4f} | Accuracy: {accuracy:.4f} | T:{time_now}')
+        flog.write(f'==> epoch: {epoch:03d} | Loss: {np.mean(loss_sublist):.4f} | Accuracy: {accuracy:.4f} | T:{time_now}'+ '\n')
+        
+    flog.close()
+#%% Plot data when finished
 
-#%% Plot 
-os.chdir(working_directory)
 
 plt.plot(loss_list)
 plt.plot(accuracy_list)
