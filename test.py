@@ -34,8 +34,10 @@ model_checkpoint.load_state_dict(checkpoint['model_state_dict'])
 # load loss, accuracy and plot them. AWESOME it works.
 loss = checkpoint['loss']
 val_accuracy = checkpoint['val_accuracy']
-plt.plot(loss)
-plt.plot(val_accuracy)
+# plt.plot(loss)
+# plt.plot(val_accuracy)
+# plt.xlabel('epoch')
+# plt.legend(['loss','validation accuracy'])
 
 trans1 = transforms.Resize([224,224])
 trans2 = transforms.Grayscale(num_output_channels=3)
@@ -48,9 +50,16 @@ mean = 0 #for normalization transform
 std = 1
 trans7 = transforms.Normalize(mean,std)
 
-image_transforms = transforms.Compose([trans1,trans2,trans3,trans4,trans5,trans6,trans7])
+image_transforms = transforms.Compose([trans1,trans2,trans5,trans6,trans7])
 
-
+use_gpu = torch.cuda.is_available()
+if use_gpu:
+    print('GPU Activated')
+    
+    model_checkpoint = model_checkpoint.to('cuda')
+else:
+    print('CPU is used')
+    
 class imagetestset(Dataset):
 
     def __init__(self,csv_file,csv_dir,transform=None): 
@@ -86,14 +95,18 @@ class imagetestset(Dataset):
 
 
 dataset = imagetestset('data.csv', 'C:/Users/rober/Desktop',transform=image_transforms)
+dataset_untransformed = imagetestset('data.csv', 'C:/Users/rober/Desktop')
 def pred_dataset(dataset,sample):   
     sm = nn.Softmax()
     transformed_image = dataset[sample][0]
     transformed_image = transformed_image.unsqueeze(0)
+    transformed_image = transformed_image.to('cuda')
     
     model_checkpoint.eval()
     prediction = model_checkpoint(transformed_image)
-    probability = sm(prediction).detach().numpy()
+    probability = sm(prediction)
+    probability = probability.cpu()
+    probability = probability.detach().numpy()
     prob_0 = probability[0][0]
     prob_1 = probability[0][1]
     
@@ -109,11 +122,38 @@ def pred_dataset(dataset,sample):
 
 prob = pred_dataset(dataset,1)
 
-image_folder = os.path.join(working_directory,'images_predicted')
-os.chdir(image_folder)
+# for ii in range(dataset.len):
+#     print(ii)
+#     prob_0, prob_1, pred = pred_dataset(dataset,ii)
+    
+#     actual_index = dataset[ii][1]
+#     if actual_index == 1:
+#         actual = "tumor"
+#     else:
+#         actual="normal"
+    
+#     fig = plt.imshow(dataset[ii][0].numpy()[0], cmap='gray')
+#     fig.axes.get_xaxis().set_visible(False)
+#     fig.axes.get_yaxis().set_visible(False)
+    
+    
+#     if pred == 0:
+#         plt.title(f'Predicted: Normal. probability:{prob_0:.4f} \n actual: {actual}')
+#     else:
+#         plt.title(f'Predicted: Tumor. probability:{prob_1:.4f}  \n actual: {actual}')
+#     plt.show()
+
+# GradCam
+
+os.chdir(working_directory)
+image_dir = 'output_images'
+os.mkdir(image_dir)
+os.chdir(image_dir)
+    
 
 for ii in range(dataset.len):
-    print(ii)
+    sample = ii
+    
     prob_0, prob_1, pred = pred_dataset(dataset,ii)
     
     actual_index = dataset[ii][1]
@@ -122,19 +162,34 @@ for ii in range(dataset.len):
     else:
         actual="normal"
     
-    fig = plt.imshow(dataset[ii][0].numpy()[0], cmap='gray')
+    transformed_image = dataset[sample][0]
+    transformed_image = transformed_image.unsqueeze(0)
+    
+    
+    from pytorch_grad_cam import GradCAM, ScoreCAM, GradCAMPlusPlus, AblationCAM, XGradCAM, EigenCAM
+    from pytorch_grad_cam.utils.image import show_cam_on_image
+    target_layers = [model_checkpoint.layer4[-1]]
+    cam = ScoreCAM(model=model_checkpoint, target_layers=target_layers, use_cuda=True)
+    
+        
+    target_layers = [model_checkpoint.layer4[-1]]
+    
+    grayscale_cam = cam(input_tensor=transformed_image, target_category=None)
+    
+    # In this example grayscale_cam has only one image in the batch:
+    grayscale_cam = grayscale_cam[0, :]
+    
+    fig = plt.imshow(dataset[sample][0].numpy()[0], cmap='gray')
     fig.axes.get_xaxis().set_visible(False)
     fig.axes.get_yaxis().set_visible(False)
-    
+    plt.imshow(grayscale_cam, alpha = 0.5, cmap = 'viridis')
     
     if pred == 0:
         plt.title(f'Predicted: Normal. probability:{prob_0:.4f} \n actual: {actual}')
     else:
         plt.title(f'Predicted: Tumor. probability:{prob_1:.4f}  \n actual: {actual}')
+    plt.savefig(f'image_{sample:03d}.png')
     plt.show()
-    plt.savefig(f'image_{ii}.png')
+   
     
-    
-    
-
 
