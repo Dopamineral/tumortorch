@@ -7,6 +7,7 @@ from sklearn import preprocessing
 import numpy as np 
 import matplotlib.pyplot as plt
 from datetime import datetime
+import seaborn as sn
 
 import torch
 from torch.utils.data import Dataset,DataLoader
@@ -16,12 +17,12 @@ import torch.nn as nn
 from torch import unsqueeze
 
 
-working_directory = 'C:/Users/rober/Desktop'
+working_directory = 'E:/AI'
 os.chdir(working_directory)
-checkpoint_folder = 'checkpoints_04-12-2021_12.39.15'
+checkpoint_folder = 'checkpoints_05-12-2021_23.44.55'
 checkpoint_path = os.path.join(working_directory,checkpoint_folder)
 os.chdir(checkpoint_path)
-checkpoint_file = 'checkpoint_0860.pt'
+checkpoint_file = 'checkpoint_0040.pt'
 checkpoint = torch.load(checkpoint_file)
 
 # load model
@@ -34,10 +35,10 @@ model_checkpoint.load_state_dict(checkpoint['model_state_dict'])
 # load loss, accuracy and plot them. AWESOME it works.
 loss = checkpoint['loss']
 val_accuracy = checkpoint['val_accuracy']
-# plt.plot(loss)
-# plt.plot(val_accuracy)
-# plt.xlabel('epoch')
-# plt.legend(['loss','validation accuracy'])
+plt.plot(loss)
+plt.plot(val_accuracy)
+plt.xlabel('epoch')
+plt.legend(['loss','validation accuracy'])
 
 trans1 = transforms.Resize([224,224])
 trans2 = transforms.Grayscale(num_output_channels=3)
@@ -94,8 +95,8 @@ class imagetestset(Dataset):
     
 
 
-dataset = imagetestset('data.csv', 'C:/Users/rober/Desktop',transform=image_transforms)
-dataset_untransformed = imagetestset('data.csv', 'C:/Users/rober/Desktop')
+dataset = imagetestset('data.csv', 'E:/AI/archive (1)/test',transform=image_transforms)
+dataset_untransformed = imagetestset('data.csv', 'E:/AI/archive (1)/test')
 def pred_dataset(dataset,sample):   
     sm = nn.Softmax()
     transformed_image = dataset[sample][0]
@@ -150,6 +151,10 @@ image_dir = 'output_images'
 os.mkdir(image_dir)
 os.chdir(image_dir)
     
+TP = 0
+FP = 0
+TN = 0
+FN = 0
 
 for ii in range(dataset.len):
     sample = ii
@@ -158,7 +163,7 @@ for ii in range(dataset.len):
     
     actual_index = dataset[ii][1]
     if actual_index == 1:
-        actual = "tumor"
+        actual = "pneumonia"
     else:
         actual="normal"
     
@@ -187,9 +192,26 @@ for ii in range(dataset.len):
     if pred == 0:
         plt.title(f'Predicted: Normal. probability:{prob_0:.4f} \n actual: {actual}')
     else:
-        plt.title(f'Predicted: Tumor. probability:{prob_1:.4f}  \n actual: {actual}')
+        plt.title(f'Predicted: Pneumonia. probability:{prob_1:.4f}  \n actual: {actual}')
     plt.savefig(f'image_{sample:03d}.png')
     plt.show()
    
-    
+    if actual_index ==1 and pred ==1:
+        TP +=1
+    elif actual_index == 1 and pred ==0:
+        FN +=1
+    elif actual_index == 0 and pred ==1:
+        FP +=1
+    elif actual_index == 0 and pred == 0:
+        TN +=1
+        
+confmatrix = [[TP, FP],
+              [FN, TN]]
+
+sn.heatmap(confmatrix, annot=True,vmin=0,
+           cmap = sn.cm.rocket_r,xticklabels=['normal','pneumonia'],
+           yticklabels=['normal','pneumonia'],fmt='g')
+
+plt.xlabel('Predicted')
+plt.ylabel('True')
 
