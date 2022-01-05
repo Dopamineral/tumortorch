@@ -30,7 +30,7 @@ torch.manual_seed(opts.seed) #! important for reproducibility
 test_ratio = opts.testratio #used in imagedataset class when defining train test split.
 
 #Logging and directory handling 
-working_directory = 'C:/Users/rober/Desktop'
+working_directory = 'E:/AI'
 os.chdir(working_directory)
 
 now = datetime.now()
@@ -45,6 +45,9 @@ logpath = os.path.join(working_directory,logging_directory_string).replace('\\',
 logfile_name = os.path.join(logpath,f'deepseeker_{date_time}.log').replace('\\','/' )
 
 flog = open(logfile_name, 'a')
+time_now = datetime.now().strftime("%d/%m %H:%M:%S")
+print(f'Starting operation | {time_now}')
+flog.write(f'Starting operation | {time_now}')
 
 #%% dataset
 class imagedataset(Dataset):
@@ -66,7 +69,7 @@ class imagedataset(Dataset):
         self.len = self.X.shape[0]
         
         #define train test splits
-        self.X_train, self.X_test, self.y_train, self.y_test =train_test_split(self.X, self.y, test_size=0.33, random_state=123) 
+        self.X_train, self.X_test, self.y_train, self.y_test =train_test_split(self.X, self.y, test_size=0.10, random_state=123) 
        
         self.X_train = self.X_train.reset_index(drop=True) #drop the indices here or you'll get some exotic errors when loading the files
         #self.y_train = self.y_train.reset_index(drop=True)
@@ -161,7 +164,7 @@ def check_label_distribution(dataset):
     
     
 
-trans1 = transforms.Resize([224,224])
+trans1 = transforms.Resize([1000,1000])
 trans2 = transforms.Grayscale(num_output_channels=3)
 trans3 = transforms.RandomHorizontalFlip(p=0.5)
 trans4 = transforms.RandomVerticalFlip(p=0.5)
@@ -174,26 +177,27 @@ trans7 = transforms.Normalize(mean,std)
 
 image_transforms = transforms.Compose([trans1,trans2,trans3,trans4,trans5,trans6,trans7])
 
-train_dataset = imagedataset('data.csv', 'C:/Users/rober/Desktop',train=True,transform=image_transforms)
-validation_dataset = imagedataset('data.csv', 'C:/Users/rober/Desktop',train=False,transform=image_transforms)
-print('quality control')
-flog.write('quality control'+ '\n')
-print('#### training dataset: ####')
-flog.write('#### training dataset: ####'+ '\n')
-check_data(train_dataset)
-check_image_channels(train_dataset)
-print('#### validation dataset: ####')
-flog.write('#### validation dataset: ####'+ '\n')
-check_data(validation_dataset)
-check_image_channels(validation_dataset)
-print('quality control')
-flog.write('quality control'+ '\n')
-check_label_distribution(train_dataset)
+train_dataset = imagedataset('data.csv', 'E:/AI/archive (1)/train',train=True,transform=image_transforms)
+validation_dataset = imagedataset('data.csv','E:/AI/archive (1)/train',train=False,transform=image_transforms)
+# print('quality control')
+# flog.write('quality control'+ '\n')
+# time_now = datetime.now().strftime("%d/%m %H:%M:%S")
+# print(f'#### training dataset: #### | T:{time_now}')
+# flog.write('#### training dataset: #### | T:{time_now}'+ '\n')
+# check_data(train_dataset)
+# check_image_channels(train_dataset)
+# print('#### validation dataset: ####')
+# flog.write('#### validation dataset: ####'+ '\n')
+# check_data(validation_dataset)
+# check_image_channels(validation_dataset)
+# print('quality control')
+# flog.write('quality control'+ '\n')
+# check_label_distribution(train_dataset)
 
 # preview_sample(train_dataset,163)
 
-train_loader = DataLoader(dataset= train_dataset, batch_size = 5)
-validation_loader = DataLoader(dataset = validation_dataset, batch_size = 5)
+train_loader = DataLoader(dataset= train_dataset, batch_size = 64)
+validation_loader = DataLoader(dataset = validation_dataset, batch_size = 64)
 
                 
 
@@ -231,17 +235,21 @@ checkpoint = {'epoch':None, # checkpoint dictionary
               'loss':None,
               'val_accuracy':None}
 
-checkpoint_save_interval = 20
+checkpoint_save_interval = 1
 
-flog.close()
+
 #%% training loop 
-max_epochs = 1000
+max_epochs = 100
 loss_list = []
 accuracy_list = []
 correct = 0
 n_test = len(validation_dataset)
 
+time_now = datetime.now().strftime("%d/%m %H:%M:%S")
+print(f'Start training | {time_now} ')
+flog.write(f'Start training | {time_now}'+ '\n')
 
+flog.close()
 for epoch in range(max_epochs):
     flog = open(logfile_name, 'a')
     time_now = datetime.now().strftime("%d/%m %H:%M:%S")

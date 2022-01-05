@@ -19,10 +19,10 @@ from torch import unsqueeze
 
 working_directory = 'E:/AI'
 os.chdir(working_directory)
-checkpoint_folder = 'checkpoints_05-12-2021_23.44.55'
+checkpoint_folder = 'E:\AI\checkpoints_05-01-2022_15.20.01'
 checkpoint_path = os.path.join(working_directory,checkpoint_folder)
 os.chdir(checkpoint_path)
-checkpoint_file = 'checkpoint_0040.pt'
+checkpoint_file = 'checkpoint_0000.pt'
 checkpoint = torch.load(checkpoint_file)
 
 # load model
@@ -40,7 +40,7 @@ plt.plot(val_accuracy)
 plt.xlabel('epoch')
 plt.legend(['loss','validation accuracy'])
 
-trans1 = transforms.Resize([224,224])
+trans1 = transforms.Resize([500,500])
 trans2 = transforms.Grayscale(num_output_channels=3)
 trans3 = transforms.RandomHorizontalFlip(p=0.5)
 trans4 = transforms.RandomVerticalFlip(p=0.5)
